@@ -71,7 +71,7 @@ public class MainController {
 	private final int MAX_RECENT_FILES = 10;
 
 	// Preferências para armazenar arquivos recentes
-	private Preferences prefs = Preferences.userNodeForPackage(MainController.class);
+	private Preferences prefs1 = Preferences.userNodeForPackage(MainController.class);
 
 	@FXML
 	public void initialize() {
@@ -113,7 +113,7 @@ public class MainController {
 	private void loadRecentFiles() {
 		recentFiles.clear();
 		for (int i = 0; i < MAX_RECENT_FILES; i++) {
-			String filePath = prefs.get("recent_file_" + i, null);
+			String filePath = prefs1.get("recent_file_" + i, null);
 			if (filePath != null) {
 				recentFiles.add(filePath);
 			}
@@ -122,12 +122,12 @@ public class MainController {
 
 	private void saveRecentFiles() {
 		for (int i = 0; i < recentFiles.size() && i < MAX_RECENT_FILES; i++) {
-			prefs.put("recent_file_" + i, recentFiles.get(i));
+			prefs1.put("recent_file_" + i, recentFiles.get(i));
 		}
 
 		// Limpar entradas antigas se houver menos arquivos recentes agora
 		for (int i = recentFiles.size(); i < MAX_RECENT_FILES; i++) {
-			prefs.remove("recent_file_" + i);
+			prefs1.remove("recent_file_" + i);
 		}
 	}
 
@@ -158,47 +158,47 @@ public class MainController {
 	}
 
 	private void updateRecentFilesMenu() {
-    // Check if scene is ready
-    if (editorTabs.getScene() == null) {
-        // Scene isn't ready yet, we'll update the menu later
-        Platform.runLater(this::updateRecentFilesMenu);
-        return;
-    }
-    
-    // Find the menu "Recent Files"
-    try {
-        for (javafx.scene.control.Menu menu : ((javafx.scene.control.MenuBar) ((VBox) ((BorderPane) editorTabs
-                .getScene().getRoot()).getTop()).getChildren().get(0)).getMenus()) {
-            if (menu.getText().equals("File")) {
-                for (MenuItem item : menu.getItems()) {
-                    if (item instanceof Menu && ((Menu) item).getText().equals("Recent Files")) {
-                        Menu recentMenu = (Menu) item;
-                        
-                        // Limpar itens antigos, mas manter o "Clear Recent Files" e o separador
-                        while (recentMenu.getItems().size() > 2) {
-                            recentMenu.getItems().remove(recentMenu.getItems().size() - 1);
-                        }
-                        
-                        // Adicionar arquivos recentes
-                        for (String filePath : recentFiles) {
-                            File file = new File(filePath);
-                            MenuItem fileItem = new MenuItem(file.getName() + " - " + file.getParent());
-                            fileItem.setUserData(filePath);
-                            fileItem.setOnAction(_ -> openFile(new File((String) fileItem.getUserData())));
-                            recentMenu.getItems().add(fileItem);
-                        }
-                        break;
-                    }
-                }
-                break;
-            }
-        }
-    } catch (Exception e) {
-        // Handle possible NPE or other errors silently
-        // We'll retry later when UI is fully initialized
-        Platform.runLater(this::updateRecentFilesMenu);
-    }
-}
+		// Check if scene is ready
+		if (editorTabs.getScene() == null) {
+			// Scene isn't ready yet, we'll update the menu later
+			Platform.runLater(this::updateRecentFilesMenu);
+			return;
+		}
+
+		// Find the menu "Recent Files"
+		try {
+			for (javafx.scene.control.Menu menu : ((javafx.scene.control.MenuBar) ((VBox) ((BorderPane) editorTabs
+					.getScene().getRoot()).getTop()).getChildren().get(0)).getMenus()) {
+				if (menu.getText().equals("File")) {
+					for (MenuItem item : menu.getItems()) {
+						if (item instanceof Menu && ((Menu) item).getText().equals("Recent Files")) {
+							Menu recentMenu = (Menu) item;
+
+							// Limpar itens antigos, mas manter o "Clear Recent Files" e o separador
+							while (recentMenu.getItems().size() > 2) {
+								recentMenu.getItems().remove(recentMenu.getItems().size() - 1);
+							}
+
+							// Adicionar arquivos recentes
+							for (String filePath : recentFiles) {
+								File file = new File(filePath);
+								MenuItem fileItem = new MenuItem(file.getName() + " - " + file.getParent());
+								fileItem.setUserData(filePath);
+								fileItem.setOnAction(_ -> openFile(new File((String) fileItem.getUserData())));
+								recentMenu.getItems().add(fileItem);
+							}
+							break;
+						}
+					}
+					break;
+				}
+			}
+		} catch (Exception e) {
+			// Handle possible NPE or other errors silently
+			// We'll retry later when UI is fully initialized
+			Platform.runLater(this::updateRecentFilesMenu);
+		}
+	}
 
 	@FXML
 	private void handleClearRecentFiles() {

@@ -1,98 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.text.Text?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.SeparatorMenuItem?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.control.TreeView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 
-<BorderPane xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="application.MainController" styleClass="main-container">
-   <top>
-      <VBox>
-         <MenuBar styleClass="menu-bar">
-            <menus>
-               <Menu text="File">
-                  <items>
-                     <MenuItem text="New File" onAction="#handleNewFile" />
-                     <MenuItem text="Open File" onAction="#handleOpenFile" />
-                     <Menu text="Recent Files">
-                        <items>
-                           <MenuItem text="Clear Recent Files" onAction="#handleClearRecentFiles" />
-                           <SeparatorMenuItem />
-                           <!-- Recent files will be added dynamically -->
-                        </items>
-                     </Menu>
-                     <MenuItem text="Save" onAction="#handleSaveFile" />
-                     <MenuItem text="Save As" onAction="#handleSaveFileAs" />
-                     <SeparatorMenuItem />
-                     <MenuItem text="Exit" onAction="#handleExit" />
-                  </items>
-               </Menu>
-               <Menu text="View">
-                  <items>
-                     <MenuItem text="Show Terminal" onAction="#handleShowTerminal" />
-                     <MenuItem text="Hide Terminal" onAction="#handleHideTerminal" />
-                  </items>
-               </Menu>
-               <Menu text="Help">
-                  <items>
-                     <MenuItem text="About" onAction="#handleAbout" />
-                  </items>
-               </Menu>
-            </menus>
-         </MenuBar>
-         <ToolBar styleClass="tool-bar">
-            <items>
-               <Button onAction="#handleNewFile" text="New" styleClass="toolbar-button" />
-               <Button onAction="#handleOpenFile" text="Open" styleClass="toolbar-button" />
-               <Button onAction="#handleSaveFile" text="Save" styleClass="toolbar-button" />
-               <Separator orientation="VERTICAL" />
-               <Button onAction="#handleExecutarCodigo" text="Run" styleClass="run-button" />
-            </items>
-         </ToolBar>
-      </VBox>
-   </top>
-   
-   <left>
-      <VBox prefWidth="220" styleClass="file-explorer-container">
-         <Label text=" Project Explorer" styleClass="section-header" />
-         <TabPane tabClosingPolicy="UNAVAILABLE" styleClass="explorer-tabs">
-            <tabs>
-               <Tab text="Workspace">
-                  <content>
-                     <TreeView fx:id="fileExplorer" VBox.vgrow="ALWAYS" styleClass="file-tree" />
-                  </content>
-               </Tab>
-               <Tab text="Recents">
-                  <content>
-                     <ListView fx:id="recentFilesList" VBox.vgrow="ALWAYS" styleClass="recent-files" />
-                  </content>
-               </Tab>
-            </tabs>
-         </TabPane>
-      </VBox>
-   </left>
-   
-   <center>
-      <BorderPane styleClass="editor-container">
-         <center>
-            <TabPane fx:id="editorTabs" tabClosingPolicy="ALL_TABS" styleClass="editor-tabs" />
-         </center>
-         <bottom>
-            <VBox fx:id="consoleContainer" visible="false" styleClass="console-container">
-               <HBox styleClass="console-header">
-                  <Label text="Terminal" styleClass="section-header" HBox.hgrow="ALWAYS" />
-                  <Label fx:id="executionTimeLabel" text="" styleClass="execution-time" />
-               </HBox>
-               <TextArea fx:id="saidaConsole" editable="false" prefHeight="150" styleClass="console-output" />
-            </VBox>
-         </bottom>
-      </BorderPane>
-   </center>
-   
-   <bottom>
-      <HBox styleClass="status-bar">
-         <Label fx:id="statusLabel" text="Ready" styleClass="status-text" HBox.hgrow="ALWAYS" />
-         <Label fx:id="lineColumnLabel" text=" | Line: 1, Col: 1" styleClass="line-col-indicator" />
-      </HBox>
-   </bottom>
+<BorderPane styleClass="main-container"
+	xmlns="http://javafx.com/javafx/23.0.1"
+	xmlns:fx="http://javafx.com/fxml/1"
+	fx:controller="application.MainController">
+	<top>
+		<VBox styleClass="header-container">
+			<MenuBar styleClass="menu-bar">
+				<menus>
+					<Menu text="File">
+						<items>
+							<MenuItem onAction="#handleNewFile" text="New File" />
+							<MenuItem onAction="#handleOpenFile" text="Open File" />
+							<Menu text="Recent Files">
+								<items>
+									<MenuItem onAction="#handleClearRecentFiles"
+										text="Clear Recent Files" />
+									<SeparatorMenuItem />
+									<!-- Recent files will be added dynamically -->
+								</items>
+							</Menu>
+							<MenuItem onAction="#handleSaveFile" text="Save" />
+							<MenuItem onAction="#handleSaveFileAs" text="Save As" />
+							<SeparatorMenuItem />
+							<MenuItem onAction="#handleExit" text="Exit" />
+						</items>
+					</Menu>
+					<Menu text="View">
+						<items>
+							<MenuItem onAction="#handleShowTerminal"
+								text="Show Terminal" />
+							<MenuItem onAction="#handleHideTerminal"
+								text="Hide Terminal" />
+						</items>
+					</Menu>
+					<Menu text="Help">
+						<items>
+							<MenuItem onAction="#handleAbout" text="About" />
+						</items>
+					</Menu>
+				</menus>
+			</MenuBar>
+			<ToolBar styleClass="tool-bar">
+				<items>
+					<Button onAction="#handleNewFile"
+						styleClass="toolbar-button" text="New" />
+					<Button onAction="#handleOpenFile"
+						styleClass="toolbar-button" text="Open" />
+					<Button onAction="#handleSaveFile"
+						styleClass="toolbar-button" text="Save" />
+					<Separator orientation="VERTICAL"
+						styleClass="toolbar-separator" />
+					<Button onAction="#handleExecutarCodigo"
+						styleClass="run-button" text="Run" />
+				</items>
+			</ToolBar>
+		</VBox>
+	</top>
+
+	<left>
+		<VBox styleClass="file-explorer-container">
+			<Label prefHeight="17.0" prefWidth="106.0"
+				styleClass="section-header" text="Project Explorer" />
+			<TabPane styleClass="explorer-tabs"
+				tabClosingPolicy="UNAVAILABLE">
+				<tabs>
+					<Tab styleClass="explorer-tab" text="Workspace">
+						<content>
+							<TreeView fx:id="fileExplorer" styleClass="file-tree"
+								VBox.vgrow="ALWAYS" />
+						</content>
+					</Tab>
+					<Tab styleClass="explorer-tab" text="Recents">
+						<content>
+							<ListView fx:id="recentFilesList"
+								styleClass="recent-files" VBox.vgrow="ALWAYS" />
+						</content>
+					</Tab>
+				</tabs>
+			</TabPane>
+		</VBox>
+	</left>
+
+	<center>
+		<BorderPane styleClass="editor-container">
+			<center>
+				<TabPane fx:id="editorTabs" styleClass="editor-tabs"
+					tabClosingPolicy="ALL_TABS" />
+			</center>
+			<bottom>
+				<VBox fx:id="consoleContainer" styleClass="console-container"
+					visible="false">
+					<HBox styleClass="console-header">
+						<Label styleClass="section-header" text="Terminal"
+							HBox.hgrow="ALWAYS" />
+						<Label fx:id="executionTimeLabel"
+							styleClass="execution-time" text="" />
+					</HBox>
+					<TextArea fx:id="saidaConsole" editable="false"
+						prefHeight="150" styleClass="console-output" />
+				</VBox>
+			</bottom>
+		</BorderPane>
+	</center>
+
+	<bottom>
+		<HBox styleClass="status-bar">
+			<Label fx:id="statusLabel" styleClass="status-text"
+				text="Ready" HBox.hgrow="ALWAYS" />
+			<Label fx:id="lineColumnLabel" styleClass="line-col-indicator"
+				text=" | Line: 1, Col: 1" />
+		</HBox>
+	</bottom>
 </BorderPane>
