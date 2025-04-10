@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
@@ -8,6 +9,7 @@
 <?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.SeparatorMenuItem?>
+<?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.control.TextArea?>
@@ -17,10 +19,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane styleClass="main-container"
-	xmlns="http://javafx.com/javafx/23.0.1"
-	xmlns:fx="http://javafx.com/fxml/1"
-	fx:controller="application.MainController">
+<BorderPane styleClass="main-container" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="application.MainController">
 	<top>
 		<VBox styleClass="header-container">
 			<MenuBar styleClass="menu-bar">
@@ -31,102 +30,150 @@
 							<MenuItem onAction="#handleOpenFile" text="Open File" />
 							<Menu text="Recent Files">
 								<items>
-									<MenuItem onAction="#handleClearRecentFiles"
-										text="Clear Recent Files" />
-									<SeparatorMenuItem />
-									<!-- Recent files will be added dynamically -->
+									<MenuItem onAction="#handleClearRecentFiles" text="Clear Recent Files" />
 								</items>
 							</Menu>
+							<SeparatorMenuItem />
 							<MenuItem onAction="#handleSaveFile" text="Save" />
 							<MenuItem onAction="#handleSaveFileAs" text="Save As" />
 							<SeparatorMenuItem />
 							<MenuItem onAction="#handleExit" text="Exit" />
 						</items>
 					</Menu>
+					<Menu text="Edit">
+						<items>
+							<MenuItem onAction="#handleUndo" text="Undo" />
+							<MenuItem onAction="#handleRedo" text="Redo" />
+							<SeparatorMenuItem />
+							<MenuItem onAction="#handleCut" text="Cut" />
+							<MenuItem onAction="#handleCopy" text="Copy" />
+							<MenuItem onAction="#handlePaste" text="Paste" />
+							<SeparatorMenuItem />
+							<MenuItem onAction="#handleFind" text="Find" />
+							<MenuItem onAction="#handleReplace" text="Replace" />
+						</items>
+					</Menu>
 					<Menu text="View">
 						<items>
-							<MenuItem onAction="#handleShowTerminal"
-								text="Show Terminal" />
-							<MenuItem onAction="#handleHideTerminal"
-								text="Hide Terminal" />
+							<MenuItem onAction="#handleShowTerminal" text="Show Terminal" />
+							<MenuItem onAction="#handleHideTerminal" text="Hide Terminal" />
+							<SeparatorMenuItem />
+							<MenuItem onAction="#handleToggleSidebar" text="Toggle Sidebar" />
+							<MenuItem onAction="#handleToggleMinimap" text="Toggle Minimap" />
+						</items>
+					</Menu>
+					<Menu text="Run">
+						<items>
+							<MenuItem onAction="#handleExecutarCodigo" text="Run" />
+							<MenuItem onAction="#handleDebug" text="Debug" />
+							<MenuItem onAction="#handleStop" text="Stop" />
 						</items>
 					</Menu>
 					<Menu text="Help">
 						<items>
 							<MenuItem onAction="#handleAbout" text="About" />
+							<MenuItem onAction="#handleDocumentation" text="Documentation" />
 						</items>
 					</Menu>
 				</menus>
 			</MenuBar>
 			<ToolBar styleClass="tool-bar">
 				<items>
-					<Button onAction="#handleNewFile"
-						styleClass="toolbar-button" text="New" />
-					<Button onAction="#handleOpenFile"
-						styleClass="toolbar-button" text="Open" />
-					<Button onAction="#handleSaveFile"
-						styleClass="toolbar-button" text="Save" />
-					<Separator orientation="VERTICAL"
-						styleClass="toolbar-separator" />
-					<Button onAction="#handleExecutarCodigo"
-						styleClass="run-button" text="Run" />
+					<Button onAction="#handleNewFile" styleClass="toolbar-button" text="New" />
+					<Button onAction="#handleOpenFile" styleClass="toolbar-button" text="Open" />
+					<Button onAction="#handleSaveFile" styleClass="toolbar-button" text="Save" />
+					<Separator orientation="VERTICAL" styleClass="toolbar-separator" />
+					<Button onAction="#handleUndo" styleClass="toolbar-button" text="Undo" />
+					<Button onAction="#handleRedo" styleClass="toolbar-button" text="Redo" />
+					<Separator orientation="VERTICAL" styleClass="toolbar-separator" />
+					<Button onAction="#handleFind" styleClass="toolbar-button" text="Find" />
+					<Button onAction="#handleReplace" styleClass="toolbar-button" text="Replace" />
+					<Separator orientation="VERTICAL" styleClass="toolbar-separator" />
+					<Button onAction="#handleExecutarCodigo" styleClass="run-button" text="Run" />
+					<Button onAction="#handleDebug" styleClass="debug-button" text="Debug" />
 				</items>
 			</ToolBar>
 		</VBox>
 	</top>
 
-	<left>
-		<VBox styleClass="file-explorer-container">
-			<Label prefHeight="17.0" prefWidth="106.0"
-				styleClass="section-header" text="Project Explorer" />
-			<TabPane styleClass="explorer-tabs"
-				tabClosingPolicy="UNAVAILABLE">
+	<center>
+		<SplitPane dividerPositions="0.7754677754677755" styleClass="main-split">
+			<items>
+				<BorderPane styleClass="editor-container">
+					<center>
+						<TabPane fx:id="editorTabs" styleClass="editor-tabs" tabClosingPolicy="ALL_TABS" />
+					</center>
+					<bottom>
+						<VBox fx:id="consoleContainer" styleClass="console-container">
+							<HBox styleClass="console-header">
+								<Label prefHeight="26.0" prefWidth="78.0" styleClass="section-header" text="TERMINAL" textAlignment="CENTER" HBox.hgrow="ALWAYS">
+                           <padding>
+                              <Insets left="10.0" />
+                           </padding></Label>
+								<Button fx:id="terminalMenuButton" styleClass="console-button" text="⋮" />
+								<Label fx:id="executionTimeLabel" styleClass="execution-time" text="" />
+							</HBox>
+							<TextArea fx:id="saidaConsole" editable="false" prefHeight="150" styleClass="console-output" />
+						</VBox>
+					</bottom>
+				</BorderPane>
+      				<VBox styleClass="minimap-container">
+      					<HBox styleClass="minimap-header">
+      						<Label prefHeight="24.0" prefWidth="71.0" styleClass="section-header" text="MINIMAP">
+                     <padding>
+                        <Insets left="10.0" />
+                     </padding>
+                  </Label>
+      						<HBox HBox.hgrow="ALWAYS" />
+      						<Button fx:id="minimapMenuButton" styleClass="minimap-button" text="⋮" />
+      					</HBox>
+      					<TextArea editable="false" styleClass="minimap-editor" />
+      				</VBox>
+			</items>
+		</SplitPane>
+	</center>
+
+	<bottom>
+		<HBox prefWidth="1214.0" styleClass="status-bar">
+			<Label fx:id="statusLabel" styleClass="status-text" text="Ready" HBox.hgrow="ALWAYS" />
+			<Label fx:id="lineColumnLabel" styleClass="line-col-indicator" text=" | Line: 1, Col: 1" />
+			<Label fx:id="encodingLabel" styleClass="encoding-indicator" text=" | UTF-8" />
+			<Label fx:id="languageLabel" styleClass="language-indicator" text=" | Scribo" />
+		</HBox>
+	</bottom>
+   <left>
+		<VBox maxWidth="250.0" minWidth="250.0" styleClass="sidebar-container" BorderPane.alignment="CENTER">
+			<HBox styleClass="sidebar-header">
+				<Label graphicTextGap="5.0" prefHeight="26.0" prefWidth="81.0" styleClass="section-header" text="EXPLORER" textAlignment="CENTER">
+               <padding>
+                  <Insets left="10.0" />
+               </padding>
+            </Label>
+				<HBox prefHeight="26.0" prefWidth="160.0" HBox.hgrow="ALWAYS" />
+				<Button fx:id="explorerMenuButton" styleClass="sidebar-button" text="⋮" />
+			</HBox>
+			<TabPane styleClass="sidebar-tabs" tabClosingPolicy="UNAVAILABLE">
 				<tabs>
-					<Tab styleClass="explorer-tab" text="Workspace">
+					<Tab styleClass="sidebar-tab" text="Workspace">
 						<content>
-							<TreeView fx:id="fileExplorer" styleClass="file-tree"
-								VBox.vgrow="ALWAYS" />
+							<TreeView fx:id="fileExplorer" styleClass="file-tree" VBox.vgrow="ALWAYS" />
 						</content>
 					</Tab>
-					<Tab styleClass="explorer-tab" text="Recents">
+					<Tab styleClass="sidebar-tab" text="Recents">
 						<content>
-							<ListView fx:id="recentFilesList"
-								styleClass="recent-files" VBox.vgrow="ALWAYS" />
+							<ListView fx:id="recentFilesList" styleClass="recent-files" VBox.vgrow="ALWAYS" />
+						</content>
+					</Tab>
+					<Tab styleClass="sidebar-tab" text="Search">
+						<content>
+							<VBox styleClass="search-container">
+								<TextArea prefHeight="21.0" prefWidth="250.0" promptText="Search files..." styleClass="search-input" />
+								<ListView styleClass="search-results" VBox.vgrow="ALWAYS" />
+							</VBox>
 						</content>
 					</Tab>
 				</tabs>
 			</TabPane>
 		</VBox>
-	</left>
-
-	<center>
-		<BorderPane styleClass="editor-container">
-			<center>
-				<TabPane fx:id="editorTabs" styleClass="editor-tabs"
-					tabClosingPolicy="ALL_TABS" />
-			</center>
-			<bottom>
-				<VBox fx:id="consoleContainer" styleClass="console-container"
-					visible="false">
-					<HBox styleClass="console-header">
-						<Label styleClass="section-header" text="Terminal"
-							HBox.hgrow="ALWAYS" />
-						<Label fx:id="executionTimeLabel"
-							styleClass="execution-time" text="" />
-					</HBox>
-					<TextArea fx:id="saidaConsole" editable="false"
-						prefHeight="150" styleClass="console-output" />
-				</VBox>
-			</bottom>
-		</BorderPane>
-	</center>
-
-	<bottom>
-		<HBox styleClass="status-bar">
-			<Label fx:id="statusLabel" styleClass="status-text"
-				text="Ready" HBox.hgrow="ALWAYS" />
-			<Label fx:id="lineColumnLabel" styleClass="line-col-indicator"
-				text=" | Line: 1, Col: 1" />
-		</HBox>
-	</bottom>
+   </left>
 </BorderPane>

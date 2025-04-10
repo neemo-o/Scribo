@@ -12,7 +12,8 @@ public class Main extends Application {
 	    Parent root = FXMLLoader.load(getClass().getResource("MainLayout.fxml"));
 	    Scene scene = new Scene(root, 750, 600);
 
-	    scene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
+	    // Carregar o arquivo CSS
+	    scene.getStylesheets().add(getClass().getResource("styles/application.css").toExternalForm());
 
 	    primaryStage.setTitle("Scribo Studio");
 	    primaryStage.setScene(scene);

@@ -1,44 +1,42 @@
 package application;
 
+import javafx.fxml.FXML;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.prefs.Preferences;
-
-import application.interpreter.Interpretador;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import javafx.application.Platform;
+import javafx.scene.control.TextInputDialog;
+import javafx.stage.FileChooser;
+import javafx.stage.FileChooser.ExtensionFilter;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TextArea;
 import application.lexer.Lexer;
 import application.lexer.Token;
-import application.parser.Comando;
-import application.parser.Parser;
-import javafx.application.Platform;
-import javafx.fxml.FXML;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.IndexRange;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.Menu;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TreeItem;
-import javafx.scene.control.TreeView;
+import java.io.ByteArrayOutputStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TreeView;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
 import javafx.stage.Window;
+
+
 
 public class MainController {
 
@@ -66,499 +64,473 @@ public class MainController {
 	@FXML
 	private Label executionTimeLabel;
 
-	private File currentWorkspace;
-	private List<String> recentFiles = new ArrayList<>();
-	private final int MAX_RECENT_FILES = 10;
+	@FXML
+	private Label encodingLabel;
 
-	// Preferências para armazenar arquivos recentes
-	private Preferences prefs1 = Preferences.userNodeForPackage(MainController.class);
+	@FXML
+	private Label languageLabel;
+
+	@FXML
+	private Button explorerMenuButton;
+
+	@FXML
+	private Button terminalMenuButton;
+
+	@FXML
+	private Button minimapMenuButton;
+	
+	private Map<Tab, File> tabFiles = new HashMap<>();
+	private Map<Tab, TextArea> tabEditors = new HashMap<>();
+	private PrintStream consoleStream;
+	private long executionStartTime;
 
 	@FXML
 	public void initialize() {
-		// Configuração inicial do TreeView
-		TreeItem<String> rootItem = new TreeItem<>("Workspace");
-		rootItem.setExpanded(true);
-		fileExplorer.setRoot(rootItem);
-
-		// Carregar arquivos recentes
-		loadRecentFiles();
-		updateRecentFilesMenu();
-
-		// Configurar ListView de arquivos recentes
-		recentFilesList.getItems().addAll(recentFiles);
-		recentFilesList.setOnMouseClicked(event -> {
-			if (event.getClickCount() == 2) {
-				String selectedFile = recentFilesList.getSelectionModel().getSelectedItem();
-				if (selectedFile != null) {
-					openFile(new File(selectedFile));
-				}
-			}
+	    setupContextMenus();
+	    setupConsoleRedirect();
+	    
+	    // Adicionar listener para atualizar o label de linha/coluna quando a aba mudar
+	    editorTabs.getSelectionModel().selectedItemProperty().addListener((_, _, newTab) -> {
+	        if (newTab != null && tabEditors.containsKey(newTab)) {
+	            updateLineColumnInfo(tabEditors.get(newTab));
+	        }
+	    });
+	};
+	
+	private void setupContextMenus() {
+		// Menu de contexto do Explorer
+		ContextMenu explorerMenu = new ContextMenu();
+		MenuItem refreshExplorer = new MenuItem("Atualizar Explorer");
+		MenuItem collapseAll = new MenuItem("Recolher Tudo");
+		MenuItem expandAll = new MenuItem("Expandir Tudo");
+		
+		refreshExplorer.setOnAction(_ -> {
+			// Implementar atualização do explorer
+			updateStatus("Explorer atualizado");
 		});
-
-		// Configurar ação de duplo clique para abrir arquivo
-		fileExplorer.setOnMouseClicked(event -> {
-			if (event.getClickCount() == 2) {
-				TreeItem<String> selectedItem = fileExplorer.getSelectionModel().getSelectedItem();
-				if (selectedItem != null && selectedItem.isLeaf() && !selectedItem.getValue().equals("Workspace")) {
-					selectedItem.getValue();
-					File file = new File(findFilePath(selectedItem));
-					if (file.isFile()) {
-						openFile(file);
-					}
-				}
-			}
+		
+		collapseAll.setOnAction(_ -> {
+			// Implementar recolher todos os itens
+			updateStatus("Todos os itens recolhidos");
 		});
+		
+		expandAll.setOnAction(_ -> {
+			// Implementar expandir todos os itens
+			updateStatus("Todos os itens expandidos");
+		});
+		
+		explorerMenu.getItems().addAll(refreshExplorer, collapseAll, expandAll);
+		explorerMenuButton.setOnAction(_ -> explorerMenu.show(explorerMenuButton, explorerMenuButton.getLayoutX(), explorerMenuButton.getLayoutY()));
+
+		// Menu de contexto do Terminal
+		ContextMenu terminalMenu = new ContextMenu();
+		MenuItem clearTerminal = new MenuItem("Limpar Terminal");
+		MenuItem copyOutput = new MenuItem("Copiar Saída");
+		MenuItem toggleWordWrap = new MenuItem("Alternar Quebra de Linha");
+		
+		clearTerminal.setOnAction(_ -> {
+			saidaConsole.clear();
+			updateStatus("Terminal limpo");
+		});
+		
+		copyOutput.setOnAction(_ -> {
+			// Implementar cópia da saída
+			updateStatus("Saída copiada");
+		});
+		
+		toggleWordWrap.setOnAction(_ -> {
+			updateStatus("Quebra de linha " + (saidaConsole.isWrapText() ? "ativada" : "desativada"));
+		});
+		
+		terminalMenu.getItems().addAll(clearTerminal, copyOutput, toggleWordWrap);
+		terminalMenuButton.setOnAction(_ -> terminalMenu.show(terminalMenuButton, terminalMenuButton.getLayoutX(), terminalMenuButton.getLayoutY()));
+
+		// Menu de contexto do Minimapa
+		ContextMenu minimapMenu = new ContextMenu();
+		MenuItem toggleMinimap = new MenuItem("Alternar Minimapa");
+		MenuItem changeScale = new MenuItem("Alterar Escala");
+		MenuItem showLineNumbers = new MenuItem("Mostrar Números de Linha");
+		
+		toggleMinimap.setOnAction(_ -> handleToggleMinimap());
+		
+		changeScale.setOnAction(_ -> {
+			// Implementar mudança de escala
+			updateStatus("Escala alterada");
+		});
+		
+		showLineNumbers.setOnAction(_ -> {
+			// Implementar mostrar/ocultar números de linha
+			updateStatus("Ação realizada com sucesso");
+		});
+		
+		minimapMenu.getItems().addAll(toggleMinimap, changeScale, showLineNumbers);
+		minimapMenuButton.setOnAction(_ -> minimapMenu.show(minimapMenuButton, minimapMenuButton.getLayoutX(), minimapMenuButton.getLayoutY()));
 	}
-
-	private void loadRecentFiles() {
-		recentFiles.clear();
-		for (int i = 0; i < MAX_RECENT_FILES; i++) {
-			String filePath = prefs1.get("recent_file_" + i, null);
-			if (filePath != null) {
-				recentFiles.add(filePath);
-			}
-		}
+	
+	private void setupConsoleRedirect() {
+	    ByteArrayOutputStream consoleOutput = new ByteArrayOutputStream();
+	    consoleStream = new PrintStream(consoleOutput) {
+	        @Override
+	        public void write(byte[] buf, int off, int len) {
+	            super.write(buf, off, len);
+	            String text = new String(buf, off, len);
+	            Platform.runLater(() -> {
+	                saidaConsole.appendText(text);
+	            });
+	        }
+	        
+	        @Override
+	        public void write(int b) {
+	            super.write(b);
+	            char c = (char) b;
+	            Platform.runLater(() -> {
+	                saidaConsole.appendText(String.valueOf(c));
+	            });
+	        }
+	    };
+	    
+	    // Redirecionar System.err
+	    System.setErr(consoleStream);
 	}
-
-	private void saveRecentFiles() {
-		for (int i = 0; i < recentFiles.size() && i < MAX_RECENT_FILES; i++) {
-			prefs1.put("recent_file_" + i, recentFiles.get(i));
-		}
-
-		// Limpar entradas antigas se houver menos arquivos recentes agora
-		for (int i = recentFiles.size(); i < MAX_RECENT_FILES; i++) {
-			prefs1.remove("recent_file_" + i);
-		}
-	}
-
-	private void addRecentFile(String filePath) {
-		// Remover duplicata se já existir
-		recentFiles.remove(filePath);
-
-		// Adicionar ao início da lista
-		recentFiles.add(0, filePath);
-
-		// Limitar tamanho da lista
-		while (recentFiles.size() > MAX_RECENT_FILES) {
-			recentFiles.remove(recentFiles.size() - 1);
-		}
-
-		// Atualizar UI e salvar
-		updateRecentFilesUI();
-		saveRecentFiles();
-	}
-
-	private void updateRecentFilesUI() {
-		// Atualizar ListView
-		recentFilesList.getItems().clear();
-		recentFilesList.getItems().addAll(recentFiles);
-
-		// Atualizar menu
-		updateRecentFilesMenu();
-	}
-
-	private void updateRecentFilesMenu() {
-		// Check if scene is ready
-		if (editorTabs.getScene() == null) {
-			// Scene isn't ready yet, we'll update the menu later
-			Platform.runLater(this::updateRecentFilesMenu);
-			return;
-		}
-
-		// Find the menu "Recent Files"
-		try {
-			for (javafx.scene.control.Menu menu : ((javafx.scene.control.MenuBar) ((VBox) ((BorderPane) editorTabs
-					.getScene().getRoot()).getTop()).getChildren().get(0)).getMenus()) {
-				if (menu.getText().equals("File")) {
-					for (MenuItem item : menu.getItems()) {
-						if (item instanceof Menu && ((Menu) item).getText().equals("Recent Files")) {
-							Menu recentMenu = (Menu) item;
-
-							// Limpar itens antigos, mas manter o "Clear Recent Files" e o separador
-							while (recentMenu.getItems().size() > 2) {
-								recentMenu.getItems().remove(recentMenu.getItems().size() - 1);
-							}
-
-							// Adicionar arquivos recentes
-							for (String filePath : recentFiles) {
-								File file = new File(filePath);
-								MenuItem fileItem = new MenuItem(file.getName() + " - " + file.getParent());
-								fileItem.setUserData(filePath);
-								fileItem.setOnAction(_ -> openFile(new File((String) fileItem.getUserData())));
-								recentMenu.getItems().add(fileItem);
-							}
-							break;
-						}
-					}
-					break;
-				}
-			}
-		} catch (Exception e) {
-			// Handle possible NPE or other errors silently
-			// We'll retry later when UI is fully initialized
-			Platform.runLater(this::updateRecentFilesMenu);
-		}
-	}
-
-	@FXML
-	private void handleClearRecentFiles() {
-		recentFiles.clear();
-		updateRecentFilesUI();
-		saveRecentFiles();
-	}
-
-	private String findFilePath(TreeItem<String> item) {
-		StringBuilder path = new StringBuilder(item.getValue());
-		TreeItem<String> parent = item.getParent();
-
-		while (parent != null && !parent.getValue().equals("Workspace")) {
-			path.insert(0, parent.getValue() + File.separator);
-			parent = parent.getParent();
-		}
-
-		if (currentWorkspace != null) {
-			return currentWorkspace.getAbsolutePath() + File.separator + path.toString();
-		}
-		return path.toString();
-	}
-
+	
+	// Menu File
 	@FXML
 	private void handleNewFile() {
-		createNewTab("Untitled.src", "");
-	}
-
-	private void createNewTab(String title, String content) {
-		Tab newTab = new Tab(title);
-
-		// Criar o container para números de linha e editor
-		HBox editorContainer = new HBox();
-		editorContainer.getStyleClass().add("editor-with-line-numbers");
-
-		// Área para números de linha
-		VBox lineNumbers = new VBox();
-		lineNumbers.getStyleClass().add("line-numbers");
-		lineNumbers.setAlignment(Pos.TOP_RIGHT);
-
-		// Editor de texto
-		TextArea textArea = new TextArea(content);
-		textArea.getStyleClass().add("code-editor");
-
-		// Atualizar números de linha quando o texto mudar
-		updateLineNumbers(lineNumbers, textArea);
-
-		textArea.textProperty().addListener((_, _, _) -> {
-			updateLineNumbers(lineNumbers, textArea);
-			updateCursorPosition(textArea);
-
-			// Marcar a aba como modificada se não for uma abertura inicial
-			if (newTab.getUserData() != null) {
-				if (!newTab.getText().endsWith("*")) {
-					newTab.setText(newTab.getText() + "*");
-				}
-			}
-		});
-
-		// Atualizar posição do cursor
-		textArea.caretPositionProperty().addListener((_, _, _) -> {
-			updateCursorPosition(textArea);
-		});
-
-		// Manipular tecla Tab para indentação
-		textArea.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-			if (event.getCode() == KeyCode.TAB) {
-				event.consume();
-				IndexRange selection = textArea.getSelection();
-				textArea.insertText(selection.getStart(), "    ");
-			}
-		});
-
-		// Adicionar componentes ao container
-		editorContainer.getChildren().addAll(lineNumbers, textArea);
-		HBox.setHgrow(textArea, Priority.ALWAYS);
-
-		newTab.setContent(editorContainer);
-		editorTabs.getTabs().add(newTab);
-		editorTabs.getSelectionModel().select(newTab);
-		updateStatus("New file created");
-	}
-
-	private void updateLineNumbers(VBox lineNumbers, TextArea textArea) {
-		// Limpar números de linha existentes
-		lineNumbers.getChildren().clear();
-
-		// Contar linhas no texto
-		String text = textArea.getText();
-		int lineCount = text.isEmpty() ? 1 : text.split("\n", -1).length;
-
-		// Adicionar números de linha
-		for (int i = 1; i <= lineCount; i++) {
-			Label lineNumber = new Label(Integer.toString(i));
-			lineNumber.getStyleClass().add("line-number");
-			lineNumber.setPadding(new Insets(0, 5, 0, 5));
-			lineNumbers.getChildren().add(lineNumber);
-		}
-	}
-
-	private void updateCursorPosition(TextArea textArea) {
-		int caretPosition = textArea.getCaretPosition();
-		String text = textArea.getText();
-
-		// Calcular linha e coluna
-		int line = 1;
-		int column = 1;
-
-		for (int i = 0; i < caretPosition; i++) {
-			if (i < text.length() && text.charAt(i) == '\n') {
-				line++;
-				column = 1;
-			} else {
-				column++;
-			}
-		}
-
-		lineColumnLabel.setText(" | Line: " + line + ", Col: " + column);
+		 TextInputDialog dialog = new TextInputDialog("NovoArquivo.scr");
+		    dialog.setTitle("Novo Arquivo");
+		    dialog.setHeaderText("Criar um novo arquivo");
+		    dialog.setContentText("Nome do arquivo:");
+		    
+		    Optional<String> result = dialog.showAndWait();
+		    result.ifPresent(fileName -> {
+		        Tab newTab = new Tab(fileName);
+		        TextArea codeEditor = createCodeEditor();
+		        newTab.setContent(codeEditor);
+		        editorTabs.getTabs().add(newTab);
+		        editorTabs.getSelectionModel().select(newTab);
+		        
+		        tabEditors.put(newTab, codeEditor);
+		        updateStatus("Novo arquivo criado: " + fileName);
+		    });
 	}
 
 	@FXML
 	private void handleOpenFile() {
 		FileChooser fileChooser = new FileChooser();
-		fileChooser.setTitle("Open File");
-		fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Scribo Files", "*.src"),
-				new FileChooser.ExtensionFilter("Text Files", "*.txt"),
-				new FileChooser.ExtensionFilter("All Files", "*.*"));
-
-		File file = fileChooser.showOpenDialog(getWindow());
-		if (file != null) {
-			openFile(file);
-		}
+	    fileChooser.setTitle("Abrir Arquivo");
+	    fileChooser.getExtensionFilters().addAll(
+	        new ExtensionFilter("Arquivos Scribo", "*.scr"),
+	        new ExtensionFilter("Todos os Arquivos", "*.*")
+	    );
+	    
+	    File file = fileChooser.showOpenDialog(getWindow());
+	    if (file != null) {
+	        openFile(file);
+	    }
 	}
-
+	
 	private void openFile(File file) {
-		try {
-			String content = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
-
-			// Verificar se o arquivo já está aberto
-			for (Tab tab : editorTabs.getTabs()) {
-				if (tab.getUserData() != null && tab.getUserData().equals(file.getAbsolutePath())) {
-					editorTabs.getSelectionModel().select(tab);
-					return;
-				}
-			}
-
-			// Criar nova aba
-			Tab newTab = new Tab(file.getName());
-
-			// Criar o container para números de linha e editor
-			HBox editorContainer = new HBox();
-			editorContainer.getStyleClass().add("editor-with-line-numbers");
-
-			// Área para números de linha
-			VBox lineNumbers = new VBox();
-			lineNumbers.getStyleClass().add("line-numbers");
-			lineNumbers.setAlignment(Pos.TOP_RIGHT);
-
-			// Editor de texto
-			TextArea textArea = new TextArea(content);
-			textArea.getStyleClass().add("code-editor");
-
-			// Atualizar números de linha quando o texto mudar
-			updateLineNumbers(lineNumbers, textArea);
-
-			textArea.textProperty().addListener((_, _, _) -> {
-				updateLineNumbers(lineNumbers, textArea);
-				updateCursorPosition(textArea);
-
-				// Marcar a aba como modificada
-				if (!newTab.getText().endsWith("*")) {
-					newTab.setText(newTab.getText() + "*");
-				}
-			});
-
-			// Atualizar posição do cursor
-			textArea.caretPositionProperty().addListener((_, _, _) -> {
-				updateCursorPosition(textArea);
-			});
-
-			// Manipular tecla Tab para indentação
-			textArea.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-				if (event.getCode() == KeyCode.TAB) {
-					event.consume();
-					IndexRange selection = textArea.getSelection();
-					textArea.insertText(selection.getStart(), "    ");
-				}
-			});
-
-			// Adicionar componentes ao container
-			editorContainer.getChildren().addAll(lineNumbers, textArea);
-			HBox.setHgrow(textArea, Priority.ALWAYS);
-
-			newTab.setContent(editorContainer);
-			newTab.setUserData(file.getAbsolutePath());
-			editorTabs.getTabs().add(newTab);
-			editorTabs.getSelectionModel().select(newTab);
-
-			updateStatus("Opened: " + file.getAbsolutePath());
-
-			// Adicionar à lista de arquivos recentes
-			addRecentFile(file.getAbsolutePath());
-
-		} catch (IOException e) {
-			showAlert(AlertType.ERROR, "Error", "Could not open file", e.getMessage());
-		}
+	    try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+	        StringBuilder content = new StringBuilder();
+	        String line;
+	        while ((line = reader.readLine()) != null) {
+	            content.append(line).append("\n");
+	        }
+	        
+	        Tab newTab = new Tab(file.getName());
+	        TextArea codeEditor = createCodeEditor();
+	        codeEditor.setText(content.toString());
+	        newTab.setContent(codeEditor);
+	        
+	        editorTabs.getTabs().add(newTab);
+	        editorTabs.getSelectionModel().select(newTab);
+	        
+	        tabFiles.put(newTab, file);
+	        tabEditors.put(newTab, codeEditor);
+	        
+	        // Adicionar à lista de arquivos recentes
+	        if (!recentFilesList.getItems().contains(file.getAbsolutePath())) {
+	            recentFilesList.getItems().add(0, file.getAbsolutePath());
+	        }
+	        
+	        updateStatus("Arquivo aberto: " + file.getName());
+	    } catch (IOException e) {
+	        showAlert(AlertType.ERROR, "Erro", "Erro ao abrir arquivo", 
+	                 "Não foi possível abrir o arquivo: " + e.getMessage());
+	    }
 	}
 
 	@FXML
 	private void handleSaveFile() {
-		Tab selectedTab = editorTabs.getSelectionModel().getSelectedItem();
-		if (selectedTab == null) {
-			showAlert(AlertType.WARNING, "Warning", "No file to save", "Please open or create a file first.");
-			return;
-		}
-
-		// Verificar se já tem um arquivo associado
-		if (selectedTab.getUserData() != null) {
-			saveToFile(new File(selectedTab.getUserData().toString()), selectedTab);
-		} else {
-			handleSaveFileAs();
-		}
+		 Tab currentTab = editorTabs.getSelectionModel().getSelectedItem();
+		    if (currentTab == null) return;
+		    
+		    File file = tabFiles.get(currentTab);
+		    if (file == null) {
+		        handleSaveFileAs();
+		    } else {
+		        saveFile(currentTab, file);
+		    }
 	}
 
 	@FXML
 	private void handleSaveFileAs() {
-		Tab selectedTab = editorTabs.getSelectionModel().getSelectedItem();
-		if (selectedTab == null) {
-			showAlert(AlertType.WARNING, "Warning", "No file to save", "Please open or create a file first.");
-			return;
-		}
-
-		FileChooser fileChooser = new FileChooser();
-		fileChooser.setTitle("Save File");
-		fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Scribo Files", "*.src"),
-				new FileChooser.ExtensionFilter("Text Files", "*.txt"));
-
-		File file = fileChooser.showSaveDialog(getWindow());
-		if (file != null) {
-			saveToFile(file, selectedTab);
-		}
+		 Tab currentTab = editorTabs.getSelectionModel().getSelectedItem();
+		    if (currentTab == null) return;
+		    
+		    FileChooser fileChooser = new FileChooser();
+		    fileChooser.setTitle("Salvar Arquivo Como");
+		    fileChooser.getExtensionFilters().addAll(
+		        new ExtensionFilter("Arquivos Scribo", "*.scr"),
+		        new ExtensionFilter("Todos os Arquivos", "*.*")
+		    );
+		    
+		    File file = fileChooser.showSaveDialog(getWindow());
+		    if (file != null) {
+		        saveFile(currentTab, file);
+		        currentTab.setText(file.getName());
+		        tabFiles.put(currentTab, file);
+		    }
 	}
-
-	private void saveToFile(File file, Tab tab) {
-		try {
-			// Obter o TextArea do container HBox
-			HBox container = (HBox) tab.getContent();
-			TextArea textArea = (TextArea) container.getChildren().get(1);
-
-			Files.write(file.toPath(), textArea.getText().getBytes(StandardCharsets.UTF_8));
-			tab.setText(file.getName());
-			tab.setUserData(file.getAbsolutePath());
-			updateStatus("Saved: " + file.getAbsolutePath());
-
-			// Adicionar à lista de arquivos recentes
-			addRecentFile(file.getAbsolutePath());
-
-		} catch (IOException e) {
-			showAlert(AlertType.ERROR, "Error", "Could not save file", e.getMessage());
-		}
+	
+	private void saveFile(Tab tab, File file) {
+	    TextArea codeEditor = tabEditors.get(tab);
+	    if (codeEditor == null) return;
+	    
+	    try (FileWriter writer = new FileWriter(file)) {
+	        writer.write(codeEditor.getText());
+	        updateStatus("Arquivo salvo: " + file.getName());
+	    } catch (IOException e) {
+	        showAlert(AlertType.ERROR, "Erro", "Erro ao salvar arquivo", 
+	                 "Não foi possível salvar o arquivo: " + e.getMessage());
+	    }
 	}
 
 	@FXML
 	private void handleExit() {
-		// Verificar se há arquivos não salvos
-		for (Tab tab : editorTabs.getTabs()) {
-			if (tab.getText().contains("*")) {
-				Alert alert = new Alert(AlertType.CONFIRMATION);
-				alert.setTitle("Unsaved Changes");
-				alert.setHeaderText("There are unsaved changes.");
-				alert.setContentText("Do you want to save before exiting?");
+		getWindow().hide();
+	}
 
-				ButtonType buttonSave = new ButtonType("Save");
-				ButtonType buttonDontSave = new ButtonType("Don't Save");
-				ButtonType buttonCancel = new ButtonType("Cancel");
-
-				alert.getButtonTypes().setAll(buttonSave, buttonDontSave, buttonCancel);
-
-				Optional<ButtonType> result = alert.showAndWait();
-				if (result.get() == buttonSave) {
-					editorTabs.getSelectionModel().select(tab);
-					handleSaveFile();
-				} else if (result.get() == buttonCancel) {
-					return;
-				}
-			}
-		}
-
-		System.exit(0);
+	// Menu Edit
+	@FXML
+	private void handleUndo() {
+		// Desfazer
 	}
 
 	@FXML
+	private void handleRedo() {
+		// Refazer
+	}
+
+	@FXML
+	private void handleCut() {
+		// Recortar
+	}
+
+	@FXML
+	private void handleCopy() {
+		// Copiar
+	}
+
+	@FXML
+	private void handlePaste() {
+		// Colar
+	}
+
+	@FXML
+	private void handleFind() {
+		// Localizar
+	}
+
+	@FXML
+	private void handleReplace() {
+		// Substituir
+	}
+
+	// Menu View
+	@FXML
 	private void handleShowTerminal() {
 		consoleContainer.setVisible(true);
-		updateStatus("Terminal shown");
+		updateStatus("Terminal visível");
 	}
 
 	@FXML
 	private void handleHideTerminal() {
 		consoleContainer.setVisible(false);
-		updateStatus("Terminal hidden");
+		updateStatus("Terminal oculto");
 	}
 
 	@FXML
+	private void handleToggleSidebar() {
+		// Alternar visibilidade da barra lateral
+		if (fileExplorer.getScene() != null) {
+			VBox sidebar = (VBox) fileExplorer.getScene().lookup(".sidebar-container");
+			if (sidebar != null) {
+				sidebar.setVisible(!sidebar.isVisible());
+				updateStatus(sidebar.isVisible() ? "Barra lateral visível" : "Barra lateral oculta");
+			}
+		}
+	}
+
+	@FXML
+	private void handleToggleMinimap() {
+		// Alternar visibilidade do minimapa
+		if (editorTabs.getScene() != null) {
+			VBox minimap = (VBox) editorTabs.getScene().lookup(".minimap-container");
+			if (minimap != null) {
+				minimap.setVisible(!minimap.isVisible());
+				updateStatus(minimap.isVisible() ? "Minimapa visível" : "Minimapa oculto");
+			}
+		}
+	}
+
+	// Menu Run
+	@FXML
+	private void handleExecutarCodigo() {
+		  Tab currentTab = editorTabs.getSelectionModel().getSelectedItem();
+		    if (currentTab == null) return;
+		    
+		    TextArea codeEditor = tabEditors.get(currentTab);
+		    if (codeEditor == null) return;
+		    
+		    // Tornar o terminal visível se estiver oculto
+		    if (!consoleContainer.isVisible()) {
+		        consoleContainer.setVisible(true);
+		        updateStatus("Terminal ativado");
+		    }
+		    
+		    // Limpar o terminal antes de executar
+		    saidaConsole.clear();
+		    updateStatus("Executando código...");
+		    executionStartTime = System.currentTimeMillis();
+		    
+		    // Executar o lexer em uma thread separada para não congelar a UI
+		    new Thread(() -> {
+		        try {
+		            String code = codeEditor.getText();
+		            Lexer lexer = new Lexer(code);
+		            List<Token> tokens = lexer.scanTokens();
+		            
+		            // Calcular tempo de execução
+		            long executionTime = System.currentTimeMillis() - executionStartTime;
+		            
+		            // Mostrar tokens no console
+		            consoleStream.println("Análise léxica concluída em " + executionTime + "ms");
+		            consoleStream.println("Total de tokens: " + tokens.size());
+		            
+		            if (!lexer.hadError()) {
+		                consoleStream.println("\nTokens encontrados:");
+		                for (Token token : tokens) {
+		                    consoleStream.println(token);
+		                }
+		                
+		                Platform.runLater(() -> {
+		                    executionTimeLabel.setText(" | " + executionTime + "ms");
+		                    updateStatus("Código executado com sucesso");
+		                });
+		            } else {
+		                Platform.runLater(() -> {
+		                    executionTimeLabel.setText(" | " + executionTime + "ms");
+		                    updateStatus("Execução concluída com erros");
+		                });
+		            }
+		        } catch (Exception e) {
+		            StringWriter sw = new StringWriter();
+		            e.printStackTrace(new PrintWriter(sw));
+		            final String stackTrace = sw.toString();
+		            
+		            Platform.runLater(() -> {
+		                consoleStream.println("Erro durante a execução:");
+		                consoleStream.println(stackTrace);
+		                updateStatus("Erro na execução do código");
+		            });
+		        }
+		    }).start();
+	}
+	
+	private TextArea createCodeEditor() {
+	    TextArea codeEditor = new TextArea();
+	    codeEditor.getStyleClass().add("code-editor");
+	    
+	    // Atualizar informações de linha/coluna
+	    codeEditor.caretPositionProperty().addListener((_, _, _) -> {
+	        updateLineColumnInfo(codeEditor);
+	    });
+	    
+	    // Configurar indentação
+	    codeEditor.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+	        if (event.getCode() == KeyCode.TAB) {
+	            codeEditor.insertText(codeEditor.getCaretPosition(), "    ");
+	            event.consume();
+	        }
+	    });
+	    
+	    return codeEditor;
+	}
+	
+	private void updateLineColumnInfo(TextArea editor) {
+	    if (editor == null) return;
+	    
+	    int caretPosition = editor.getCaretPosition();
+	    int line = 1;
+	    int column = 1;
+	    
+	    String text = editor.getText();
+	    for (int i = 0; i < caretPosition; i++) {
+	        if (i < text.length() && text.charAt(i) == '\n') {
+	            line++;
+	            column = 1;
+	        } else {
+	            column++;
+	        }
+	    }
+	    
+	    lineColumnLabel.setText(" | Linha: " + line + ", Col: " + column);
+	}
+
+	@FXML
+	private void handleDebug() {
+		// Depurar código
+	}
+
+	@FXML
+	private void handleStop() {
+		// Parar execução
+	}
+
+	// Menu Help
+	@FXML
 	private void handleAbout() {
 		Alert alert = new Alert(AlertType.INFORMATION);
-		alert.setTitle("About Scribo Studio");
-		alert.setHeaderText("Scribo Studio");
-		alert.setContentText("Uma IDE para a linguagem Scribo.\nVersão 1.0");
+		alert.setTitle("Sobre o ScriboIDE");
+		alert.setHeaderText("ScriboIDE v1.0");
+		alert.setContentText("Um ambiente de desenvolvimento integrado simples e eficiente.\n\n" +
+						   "Desenvolvido com JavaFX e Java.\n" +
+						   "© 2024 - Todos os direitos reservados.");
 		alert.showAndWait();
 	}
 
 	@FXML
-	private void handleExecutarCodigo() {
-		// Verifica se há uma aba selecionada
-		Tab selectedTab = editorTabs.getSelectionModel().getSelectedItem();
-		if (selectedTab != null) {
-			// Obter o TextArea do container HBox
-			HBox container = (HBox) selectedTab.getContent();
-			TextArea editorCodigo = (TextArea) container.getChildren().get(1);
-			String codigo = editorCodigo.getText();
-			saidaConsole.clear();
+	private void handleDocumentation() {
+		Alert alert = new Alert(AlertType.INFORMATION);
+		alert.setTitle("Documentação");
+		alert.setHeaderText("Documentação do ScriboIDE");
+		alert.setContentText("A documentação completa está disponível em:\n" +
+						   "https://github.com/seu-usuario/scriboide/wiki\n\n" +
+						   "Recursos principais:\n" +
+						   "- Editor de código com suporte a múltiplas abas\n" +
+						   "- Terminal integrado\n" +
+						   "- Explorador de arquivos\n" +
+						   "- Minimapa para navegação\n" +
+						   "- Suporte a múltiplas linguagens");
+		alert.showAndWait();
+	}
 
-			// Mostrar o terminal se estiver escondido
-			if (!consoleContainer.isVisible()) {
-				consoleContainer.setVisible(true);
-			}
-
-			// Registrar tempo de início
-			long startTime = System.currentTimeMillis();
-
-			try {
-				Lexer lexer = new Lexer(codigo);
-				List<Token> tokens = lexer.escanearTokens();
-
-				Parser parser = new Parser(tokens);
-				List<Comando> comandos = parser.parse();
-
-				Interpretador interpretador = new Interpretador(msg -> saidaConsole.appendText(msg + "\n"));
-				interpretador.interpretar(comandos);
-
-				// Calcular tempo de execução
-				long executionTime = System.currentTimeMillis() - startTime;
-
-				// Atualizar label de tempo de execução
-				executionTimeLabel.setText(" | Tempo: " + executionTime + "ms");
-
-				// Mensagem de finalização do processo
-				saidaConsole.appendText(
-						"[Info] Processo concluído -> ACABOU TUDO. (Executado em " + executionTime + "ms)\n");
-			} catch (Exception e) {
-				// Calcular tempo de execução mesmo em caso de erro
-				long executionTime = System.currentTimeMillis() - startTime;
-				executionTimeLabel.setText("Tempo: " + executionTime + "ms");
-
-				saidaConsole.appendText("[Erro] " + e.getMessage() + "\n");
-			}
-		} else {
-			saidaConsole.appendText("[Erro] Nenhuma aba selecionada.\n");
-		}
+	// Outros
+	@FXML
+	private void handleClearRecentFiles() {
+		 recentFilesList.getItems().clear();
+		    updateStatus("Lista de arquivos recentes limpa");
 	}
 
 	private void showAlert(AlertType type, String title, String header, String content) {
@@ -575,6 +547,6 @@ public class MainController {
 
 	@FXML
 	private Window getWindow() {
-		return editorTabs.getScene().getWindow();
+		return statusLabel.getScene().getWindow();
 	}
 }

@@ -1,18 +1,36 @@
 package application.lexer;
 
 public class Token {
-    public final TokenType tipo;
-    public final String lexema;
-    public final int linha;
+    private final TokenType type;
+    private final String lexeme;
+    private final Object literal;
+    private final int line;
 
-    public Token(TokenType tipo, String lexema, int linha) {
-        this.tipo = tipo;
-        this.lexema = lexema;
-        this.linha = linha;
+    public Token(TokenType type, String lexeme, Object literal, int line) {
+        this.type = type;
+        this.lexeme = lexeme;
+        this.literal = literal;
+        this.line = line;
+    }
+
+    public TokenType getType() {
+        return type;
+    }
+
+    public String getLexeme() {
+        return lexeme;
+    }
+
+    public Object getLiteral() {
+        return literal;
+    }
+
+    public int getLine() {
+        return line;
     }
 
     @Override
     public String toString() {
-        return tipo + " '" + lexema + "' (linha " + linha + ")";
+        return type + " " + lexeme + " " + literal;
     }
 }
